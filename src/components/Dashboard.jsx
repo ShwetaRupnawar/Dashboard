@@ -1,134 +1,138 @@
-import React, { useEffect, useRef } from "react";
-import { GridStack } from "gridstack";
-
-import TaskPieChart from "./tasks/TaskPieChart";
-import TaskCalendar from "./calendar/TaskCalendar";
-import TaskList from "./tasks/TaskList";
-import TaskProgress from "./tasks/TaskProgress";
-
-import "gridstack/dist/gridstack.min.css";
-import "../styles/dashboard.css";
+import React, { useState } from "react";
+import GridLayout from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 
 const Dashboard = () => {
-  const gridRef = useRef(null);
-  const grid = useRef(null);
+  const COLS = 12;
 
-  useEffect(() => {
-    if (!gridRef.current) return;
+  const [widgets, setWidgets] = useState([
+    { i: "1", x: 0, y: 0, w: 4, h: 2 },
+    { i: "2", x: 4, y: 0, w: 4, h: 2 },
+    { i: "3", x: 8, y: 0, w: 4, h: 2 },
+  ]);
 
-    if (grid.current) {
-      grid.current.destroy(false);
+  const widgetNames = ["Widget 1", "Widget 2", "Widget 2"];
+
+  // --------------------
+  // Find first horizontal space for new widget
+  // --------------------
+  const getNextPosition = (widgets, widgetWidth) => {
+    const grid = Array.from({ length: 100 }, () => Array(COLS).fill(false));
+
+    // mark occupied cells
+    widgets.forEach(({ x, y, w, h }) => {
+      for (let dy = 0; dy < h; dy++) {
+        for (let dx = 0; dx < w; dx++) {
+          grid[y + dy][x + dx] = true;
+        }
+      }
+    });
+
+    // find first available position
+    for (let y = 0; y < grid.length; y++) {
+      for (let x = 0; x <= COLS - widgetWidth; x++) {
+        let fits = true;
+        for (let dx = 0; dx < widgetWidth; dx++) {
+          if (grid[y][x + dx]) {
+            fits = false;
+            break;
+          }
+        }
+        if (fits) return { x, y };
+      }
     }
 
-    grid.current = GridStack.init(
-      {
-        column: 12,
-        cellHeight: 80,
-        margin: 20,
-        animate: true,
-        float: false,
-        compact: false,
-        handle: ".drag-handle",
-        resizable: { handles: "all" },
-        disableOneColumnMode: true,
-      },
-      gridRef.current
-    );
-
-    return () => {
-      if (grid.current) {
-        grid.current.destroy(false);
-        grid.current = null;
-      }
-    };
-  }, []);
-
-  // ================= ADD WIDGET =================
-  const addWidget = () => {
-    if (!grid.current) return;
-
-    const widgetId = `widget-${Date.now()}`;
-
-    const widget = document.createElement("div");
-    widget.className = "grid-stack-item";
-    widget.setAttribute("gs-w", "6");
-    widget.setAttribute("gs-h", "8");
-    widget.setAttribute("gs-id", widgetId);
-
-    widget.innerHTML = `
-      <div class="grid-stack-item-content card">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h2 class="card-title drag-handle">New Widget</h2>
-          <button class="delete-btn" data-id="${widgetId}">✕</button>
-        </div>
-        <div style="flex:1; display:flex; justify-content:center; align-items:center;">
-          <p>Dynamic Widget Content</p>
-        </div>
-      </div>
-    `;
-
-    grid.current.addWidget(widget);
-
-    // Attach delete event
-    widget.querySelector(".delete-btn").addEventListener("click", (e) => {
-      const id = e.target.getAttribute("data-id");
-      deleteWidget(id);
-    });
+    // fallback to bottom
+    return { x: 0, y: widgets.length > 0 ? Math.max(...widgets.map(w => w.y + w.h)) : 0 };
   };
 
-  // ================= DELETE WIDGET =================
-  const deleteWidget = (id) => {
-    if (!grid.current) return;
+  const addWidget = () => {
+    const newId = (widgets.length + 1).toString();
+    const w = 4;
+    const h = 2;
+    const { x, y } = getNextPosition(widgets, w);
 
-    const el = gridRef.current.querySelector(`[gs-id="${id}"]`);
-    if (el) {
-      grid.current.removeWidget(el);
-    }
+    setWidgets(prev => [...prev, { i: newId, x, y, w, h }]);
+  };
+
+  const removeWidget = (id) => {
+    setWidgets(prev => prev.filter(w => w.i !== id));
+  };
+
+  const onLayoutChange = (layout) => {
+    setWidgets(layout.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })));
+  };
+
+  const getWidgetName = (i) => {
+    const index = parseInt(i, 10) - 1;
+    if (index < widgetNames.length) return widgetNames[index];
+    return `Widget ${i}`;
   };
 
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h1 className="dashboard-title">Dashboard</h1>
+    <div style={{ padding: 20 }}>
+      <button
+        onClick={addWidget}
+        style={{ marginBottom: 20, padding: "10px 20px", fontSize: 16 }}
+      >
+        Add Widget
+      </button>
 
-        <button className="add-widget-btn" onClick={addWidget}>
-          + Add Widget
-        </button>
-      </div>
-
-      <div className="grid-stack" ref={gridRef}>
-        {/* PIE */}
-        <div className="grid-stack-item" gs-w="6" gs-h="8">
-          <div className="grid-stack-item-content card">
-            <h2 className="card-title drag-handle">Task Overview</h2>
-            <TaskPieChart />
+      <GridLayout
+        layout={widgets}
+        cols={COLS}
+        rowHeight={120}
+        width={1200}
+        onLayoutChange={onLayoutChange}
+        compactType="vertical"
+        preventCollision={false}
+        isResizable={true}
+        isDraggable={true}
+      >
+        {widgets.map((w) => (
+          <div
+            key={w.i}
+            style={{
+              background: "#f4f4f4",
+              color: "#111",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-start",
+              padding: 16,
+              boxSizing: "border-box",
+              borderRadius: 8,
+              border: "1px solid #ccc",
+              fontSize: 16,
+              fontWeight: 600,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <span>{getWidgetName(w.i)}</span>
+              <button
+                onClick={() => removeWidget(w.i)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "red",
+                  fontSize: 18,
+                  cursor: "pointer",
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div></div>
           </div>
-        </div>
-
-        {/* CALENDAR */}
-        <div className="grid-stack-item" gs-w="6" gs-h="8">
-          <div className="grid-stack-item-content card">
-            <h2 className="card-title drag-handle">Calendar</h2>
-            <TaskCalendar />
-          </div>
-        </div>
-
-        {/* TASK LIST */}
-        <div className="grid-stack-item" gs-w="6" gs-h="8">
-          <div className="grid-stack-item-content card">
-            <h2 className="card-title drag-handle">Task List</h2>
-            <TaskList />
-          </div>
-        </div>
-
-        {/* TASK PROGRESS */}
-        <div className="grid-stack-item" gs-w="6" gs-h="8">
-          <div className="grid-stack-item-content card">
-            <h2 className="card-title drag-handle">Task Progress</h2>
-            <TaskProgress />
-          </div>
-        </div>
-      </div>
+        ))}
+      </GridLayout>
     </div>
   );
 };

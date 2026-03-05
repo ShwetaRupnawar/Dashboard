@@ -20,4 +20,4 @@ const SharedDocs = () => {
   );
 };
 
-export default Shared;
+export default SharedDocs;

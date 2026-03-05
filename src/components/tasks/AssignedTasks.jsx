@@ -20,4 +20,4 @@ const AssignedTasks = () => {
   );
 };
 
-export default AssignedTask;
+export default AssignedTasks;

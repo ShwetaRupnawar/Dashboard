@@ -6,20 +6,15 @@ const TaskCalendar = () => {
   const [date, setDate] = useState(new Date());
 
   return (
-    <div className="card">
-
-      {/* SIMPLE HEADING */}
-      <h3 className="calendar-title">Calendar</h3>
-
-      <div className="calendar-container">
-        <Calendar
-          onChange={setDate}
-          value={date}
-        />
-      </div>
-
+    <div className="calendar-container">
+      <Calendar
+        onChange={setDate}
+        value={date}
+        className="react-calendar"
+      />
     </div>
   );
 };
 
 export default TaskCalendar;
+
